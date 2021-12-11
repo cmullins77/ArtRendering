@@ -1,0 +1,180 @@
+if (vNum <= 2) { //Original Filter
+    float3 color = SceneTextureLookup(GetViewportUV(Parameters), 14, false);
+    float2 UVpos = float2(color[0], color[1]);
+
+    float3 result = Col;
+    float2 Adjust = View.ViewSizeAndInvSize.zw*MaxDistanceAway*2*(UVpos-.5);
+
+    MaterialFloat2 Local0 = (UVpos*Adjust)+GetViewportUV(Parameters);
+    MaterialFloat2 Local1 = ClampSceneTextureUV(ViewportUVToSceneTextureUV(Local0, 14), 14);
+
+    float2 SampleUV = Local1; //UVpos;
+
+    for( int i = 0; i<MaxLoops; i++ )
+    {
+        result = SceneTextureLookup(SampleUV, 14, false);
+        SampleUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV((Adjust*float2(result[0],result[1]))+GetViewportUV(Parameters), 14), 14);
+
+    }
+
+    return result;
+} else if (vNum <= 4) { //Remove uvPos from the initial Adjust calculation, which is now just the max distance * inverse screen size, still calculates the uv change as uvPos (rg of current) * Adjust
+    MaxDistanceAway *= 2;
+    float3 color = SceneTextureLookup(GetViewportUV(Parameters), 14, false);
+    float2 UVpos = float2(color[0], color[1]);
+
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway;
+
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = UVpos * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(newUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+  
+      UVpos = float2(color[0], color[1]);
+    }
+    return color;
+} else if (vNum <= 5) { //uv change is now 2(uvPos - 0.5) * Adjust
+    MaxDistanceAway *= 0.375;
+    float3 color = SceneTextureLookup(GetViewportUV(Parameters), 14, false);
+    float2 UVpos = float2(color[0], color[1]);
+
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway;
+
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = 2 * (UVpos - 0.5) * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(newUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+
+      UVpos = float2(color[0], color[1]);
+    }
+    return color;
+} else if (vNum <= 6) { //use base color to determine uvpos
+    MaxDistanceAway *= 0.375;
+    float3 color = SceneTextureLookup(GetViewportUV(Parameters), 14, false);
+    float3 uvColor = SceneTextureLookup(GetViewportUV(Parameters), 5, false);
+    float2 UVpos = float2(uvColor[0], uvColor[1]);
+
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway;
+
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = 2 * (UVpos - 0.5) * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = newUV;
+      adjustedUV = float2(clamp(adjustedUV[0], 0, 1), clamp(adjustedUV[1], 0, 1));
+
+      adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(adjustedUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+      uvColor = SceneTextureLookup(adjustedUV, 5, false);
+
+      UVpos = float2(uvColor[0], uvColor[1]);
+    }
+    return  color;
+} else if (vNum <= 7) { // wrap colors instead of clamping
+    MaxDistanceAway *= 2.5;
+    MaxDistanceAway = MaxDistanceAway/MaxLoops;
+    float3 color = SceneTextureLookup(GetViewportUV(Parameters), 14, false);
+    float3 uvColor = SceneTextureLookup(GetViewportUV(Parameters), 5, false);
+    float2 UVpos = float2(uvColor[0], uvColor[1]);
+
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway;
+
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = 2 * (UVpos - 0.5) * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = newUV;
+      while(adjustedUV[0] < 0) {
+        adjustedUV[0]++;
+      }
+      while (adjustedUV[1] < 0) {
+        adjustedUV[1]++;
+      }
+      while (adjustedUV[0] >= 1) {
+        adjustedUV[0]--;
+      }
+      while (adjustedUV[1] >= 1) {
+        adjustedUV[1]--;
+      }
+
+      adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(adjustedUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+      uvColor = SceneTextureLookup(adjustedUV, 5, false);
+
+      UVpos = float2(uvColor[0], uvColor[1]);
+    }
+    return color;
+} else if (vNum <= 8) { //blend colors at edges better by mirroring image instead of wrappingaround to other side
+    MaxDistanceAway *= 0.5;
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    float3 color = Col;
+    float3 uvColor = SceneTextureLookup(GetViewportUV(Parameters), 5, false);
+    float2 UVpos = float2(uvColor[0], uvColor[1]);
+
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway;
+
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = 2 * (UVpos - 0.5) * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = newUV;
+      adjustedUV = abs(adjustedUV);
+      if (adjustedUV[0] > 1) {
+        adjustedUV[0] = 1 - (adjustedUV[0] - floor(adjustedUV[0]));
+      }
+      if (adjustedUV[1] > 1) {
+        adjustedUV[1] = 1 - (adjustedUV[1] - floor(adjustedUV[1]));
+      }
+
+      adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(adjustedUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+      uvColor = SceneTextureLookup(adjustedUV, 5, false);
+
+      UVpos = float2(uvColor[0], uvColor[1]);
+    }
+    return color;
+} else if (vNum <= 9) { //Direction set by initial color by using the Adjust = MaxDistance * inverse screen size * (2(uvPos - 0.5)) instead of in the loop
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    float3 color = Col;
+    float3 uvColor = SceneTextureLookup(GetViewportUV(Parameters), 5, false);
+    float2 UVpos = float2(uvColor[0], uvColor[1]);
+
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway * 2 * (UVpos - 0.5);
+
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = UVpos * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = newUV;
+      adjustedUV = abs(adjustedUV);
+      if (adjustedUV[0] > 1) {
+        adjustedUV[0] = 1 - (adjustedUV[0] - floor(adjustedUV[0]));
+      }
+      if (adjustedUV[1] > 1) {
+        adjustedUV[1] = 1 - (adjustedUV[1] - floor(adjustedUV[1]));
+      }
+
+      adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(adjustedUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+      uvColor = SceneTextureLookup(adjustedUV, 5, false);
+
+      UVpos = float2(uvColor[0], uvColor[1]);
+    }
+    return color;
+}
+
+return 1;

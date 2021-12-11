@@ -1,0 +1,89 @@
+MaterialFloat2 morphImage;
+int filterRadius = 1;
+
+int N = filterRadius * 2 + 1;
+
+MaterialFloat2 currentUV = GetDefaultSceneTextureUV(Parameters, 14);
+
+float3 color = SceneTextureLookup(currentUV, 14, false);
+//color = 
+
+float weights[3][3];
+
+MaterialFloat2 uv = GetViewportUV(Parameters);
+
+if (useImg == 0) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            MaterialFloat2 newUV = uv;
+            float u = (currentUV[0]*size[0] + i - 0.5*(N-1))/size[0];
+            float v = (currentUV[1]*size[1] + j - 0.5*(N-1))/size[1];
+            uv[0] = u;
+            uv[1] = v;
+            if (newUV[0] < 0) {
+                newUV[0] = abs(newUV[0]); 
+            } else if (newUV[0] >= 1) {
+                newUV[0] = 1 - (newUV[0] - 1); 
+            }
+            if (newUV[1] < 0) {
+                newUV[1] = abs(newUV[1]); 
+            } else if (newUV[1] >= 1) {
+                newUV[1] = 1 - (newUV[1] - 1); 
+            }
+            float2 texColor = ProcessMaterialColorTextureLookup(Texture2DSample(Material.Texture2D_0, Material.Texture2D_0Sampler,newUV));
+            weights[i][j] = texColor[0];
+        }
+    }
+} else {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            float u = (currentUV[0]*size[0] + i - 0.5*(N-1))/size[0];
+            float v = (currentUV[1]*size[1] + j - 0.5*(N-1))/size[1];
+            uv[0] = u;
+            uv[1] = v;
+           /* MaterialFloat2 newUV = currentUV +  (View.ViewSizeAndInvSize.zw * float2(i,j)) - 0.5*(4* View.ViewSizeAndInvSize.zw);
+            if (newUV[0] < 0) {
+                newUV[0] = abs(newUV[0]); 
+            } else if (newUV[0] >= 1) {
+                newUV[0] = 1 - (newUV[0] - 1); 
+            }
+            if (newUV[1] < 0) {
+                newUV[1] = abs(newUV[1]); 
+            } else if (newUV[1] >= 1) {
+                newUV[1] = 1 - (newUV[1] - 1); 
+            }*/
+            weights[i][j] = 1;
+        }
+    }
+}
+
+float maxAvg = 0;
+for (int i2 = 0 ; i2 < N; i2++) {
+    for (int j2 = 0; j2 < N; j2++) {
+        float weight = weights[i2][j2];
+        float u = (currentUV[0]*size[0] + i2 - 0.5*(N-1))/size[0];
+        float v = (currentUV[1]*size[1] + j2 - 0.5*(N-1))/size[1];
+        if (u < 0) {
+            u = abs(u); 
+        } else if (u >= 1) {
+            u = 1 - (u - 1); 
+           }
+        if (v < 0) {
+            v = abs(v); 
+        } else if (v >= 1) {
+            v = 1 - (u -1); 
+        }
+        uv[0] = u;
+        uv[1] = v;
+        float3 col = SceneTextureLookup(uv, 14, false);
+        col = col*weight;
+        float currentAvg = (col[0] + col[1] + col[2])/3.0;
+        float newMaxAvg = max(currentAvg, maxAvg);
+        if (newMaxAvg > maxAvg) {
+            maxAvg = newMaxAvg;
+            color = col;
+        }
+    }
+}
+
+return color;

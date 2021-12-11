@@ -1,0 +1,16 @@
+float3 normalColor = SceneTextureLookup(GetViewportUV(Parameters), 8, false);
+normalColor = cross(CamDir,normalColor);
+
+float noiseValue = noise(normalColor);
+noiseValue *= Distance/50;
+noiseValue += Size*ScreenPos;
+noiseValue /= Size;
+
+
+float uv = abs(noiseValue);
+if (uv > 1) {
+  uv = 1 - (uv - floor(uv));
+}
+
+float2 newUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(float2(uv,uv), 14), 14);
+return SceneTextureLookup(newUV, 14, false);

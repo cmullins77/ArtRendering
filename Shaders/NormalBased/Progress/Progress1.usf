@@ -1,0 +1,111 @@
+if (vNum <= 12) { //"Get Direction from World Normals cross Camera Direction"
+    MaxDistanceAway *= 0.1;
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    float3 color = Col;
+    float3 baseColor = SceneTextureLookup(GetViewportUV(Parameters), 5, false);
+    float3 normalCol = SceneTextureLookup(GetViewportUV(Parameters), 8, false);
+    float3 camDir = CameraDirection;
+
+    normalCol = cross(normalCol, camDir);
+
+    //Use Normals to calculate UVPOS
+    float2 UVpos = float2(normalCol[0], normalCol[1]);
+
+    MaxDistanceAway /= 10;
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway;
+
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = 2 * (UVpos-0.5) * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = newUV;
+      adjustedUV = abs(adjustedUV);
+      if (adjustedUV[0] > 1) {
+        adjustedUV[0] = 1 - (adjustedUV[0] - floor(adjustedUV[0]));
+      }
+      if (adjustedUV[1] > 1) {
+        adjustedUV[1] = 1 - (adjustedUV[1] - floor(adjustedUV[1]));
+      }
+      currentUV = adjustedUV;
+
+      adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(adjustedUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+      normalCol = SceneTextureLookup(adjustedUV, 8, false);
+      normalCol = cross(normalCol, camDir);
+      baseColor = SceneTextureLookup(adjustedUV, 5, false);
+
+      //Use Normals to calculate UVPOS
+      UVpos = float2(normalCol[0], normalCol[1]);
+    }
+    return color;
+} else if (vNum <= 13) { //Uses Size to help adjust max distnace away
+    MaxDistanceAway *= 0.025;
+    float2 uv = GetViewportUV(Parameters);
+
+    float3 worldNormal = SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(uv, 14), 14), 8, false);
+    float3 result =  SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(uv, 14), 14), 14, false);
+    float3 CamDir = CameraDirection;
+    float3 adjustedNormal = cross(CamDir, worldNormal);
+
+    for (int i = 0; i < MaxLoops; i++) {
+      float2 newUV = float2(adjustedNormal[0], adjustedNormal[1]);
+      newUV *= MaxDistanceAway;
+      float2 ScreenPos = uv * Size;
+      newUV += ScreenPos;
+      newUV /= Size;
+      newUV = abs(newUV);
+      if (newUV[0] > 1) {
+        newUV[0] = 1 - (newUV[0] - floor(newUV[0]));
+      }
+      if (newUV[1] > 1) {
+        newUV[1] = 1 - (newUV[1] - floor(newUV[1]));
+      }
+      uv = newUV;
+      newUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(newUV, 14), 14);
+
+      result = SceneTextureLookup(newUV, 14, false);
+
+      worldNormal = SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(uv, 14), 14), 8, false);
+      adjustedNormal = cross(CamDir, worldNormal);
+    }
+    return result;
+} else if (vNum <= 13) { //Uses Size to help adjust max distnace away
+    MaxDistanceAway *= 0.025;
+    float2 uv = GetViewportUV(Parameters);
+
+    float3 worldNormal = SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(uv, 14), 14), 8, false);
+    float3 result =  SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(uv, 14), 14), 14, false);
+    float3 CamDir = CameraDirection;
+    float3 adjustedNormal = cross(CamDir, worldNormal);
+
+    for (int i = 0; i < MaxLoops; i++) {
+      float2 newUV = float2(adjustedNormal[0], adjustedNormal[1]);
+      newUV *= MaxDistanceAway;
+      float2 ScreenPos = uv * Size;
+      newUV += ScreenPos;
+      newUV /= Size;
+      newUV = abs(newUV);
+      if (newUV[0] > 1) {
+        newUV[0] = 1 - (newUV[0] - floor(newUV[0]));
+      }
+      if (newUV[1] > 1) {
+        newUV[1] = 1 - (newUV[1] - floor(newUV[1]));
+      }
+      uv = newUV;
+      newUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(newUV, 14), 14);
+
+      result = SceneTextureLookup(newUV, 14, false);
+
+      worldNormal = SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(uv, 14), 14), 8, false);
+      adjustedNormal = cross(CamDir, worldNormal);
+    }
+    return result;
+} else if (vNum <= 15) {
+  // Note that here MaterialNormal can be in world space or tangent space
+  float3 MaterialNormal = GetMaterialNormal(Parameters, PixelMaterialInputs);
+}
+return 1;
+
+
+

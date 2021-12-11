@@ -1,0 +1,109 @@
+struct _CommonLib {
+
+    float3 convertRGBtoHSV(in float3 rgb) {
+        float3 result = rgb;
+        float r = rgb.x;
+        float g = rgb.y;
+        float b = rgb.z;
+        float maxVal = max(max(r,g),b);
+        float minVal = min(min(r,g),b);
+        float v = maxVal;
+        float s = 0;
+        float h = 0;
+        if (v != 0) {
+          s = (maxVal - minVal)/maxVal;
+          float delta = maxVal - minVal;
+          if (delta == 0) {
+            h = 0;
+          } else {
+            if (r == maxVal) {
+               h = (g - b)/delta;
+             } else if (g == maxVal) {
+               h = 2 + (b - r)/delta;
+             } else {
+               h = 4 + (r - g)/delta;
+             }
+             h = h * 60;
+             if (h < 0) {
+               h += 360;
+             }
+          }
+        }
+        result = float3(h,s,v);
+        return result;
+    }
+
+} Common;
+
+if (vNum <= 10) { //"Uses hue to determine direction by converting hue to degrees and use saturation to determine distance"
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    float3 color = Col;
+    float3 uvColor = SceneTextureLookup(GetViewportUV(Parameters), 5, false);
+
+    //calculate initial hsv
+    float3 hsv = Common.convertRGBtoHSV(uvColor);
+    //Use hue as angle
+    float2 UVpos = float2(cos(hsv[0]), sin(hsv[0])) * pow(hsv[1], SatInfl);
+
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway * 2 * (UVpos - 0.5);
+
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = UVpos * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = newUV;
+      adjustedUV = abs(adjustedUV);
+      if (adjustedUV[0] > 1) {
+        adjustedUV[0] = 1 - (adjustedUV[0] - floor(adjustedUV[0]));
+      }
+      if (adjustedUV[1] > 1) {
+        adjustedUV[1] = 1 - (adjustedUV[1] - floor(adjustedUV[1]));
+      }
+
+      adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(adjustedUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+      uvColor = SceneTextureLookup(adjustedUV, 5, false);
+
+      //calculate new hsv
+      float3 hsv = Common.convertRGBtoHSV(uvColor);
+      
+      //Use hue as angle
+      UVpos = float2(cos(hsv[0]), sin(hsv[0])) * pow(hsv[1], SatInfl);
+    }
+    return color;
+} else if (vNum <= 11) { //Use 1 - saturation instead of saturation
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    float3 color = Col;
+    float3 uvColor = SceneTextureLookup(GetViewportUV(Parameters), 5, false);
+
+    float3 hsv = Common.convertRGBtoHSV(uvColor);
+    
+    float2 UVpos = float2(cos(hsv[0]), sin(hsv[0])) * pow(1-hsv[1], SatInfl);
+
+    float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway * 2 * (UVpos - 0.5);
+
+    for (int i = 0; i < MaxLoops; i++) {
+      MaterialFloat2 uvChange = UVpos * Adjust;
+      MaterialFloat2 newUV = uvChange + currentUV;
+
+      MaterialFloat2 adjustedUV = newUV;
+      adjustedUV = abs(adjustedUV);
+      if (adjustedUV[0] > 1) {
+        adjustedUV[0] = 1 - (adjustedUV[0] - floor(adjustedUV[0]));
+      }
+      if (adjustedUV[1] > 1) {
+        adjustedUV[1] = 1 - (adjustedUV[1] - floor(adjustedUV[1]));
+      }
+
+      adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(adjustedUV, 14), 14);
+
+      color = SceneTextureLookup(adjustedUV, 14, false);
+      uvColor = SceneTextureLookup(adjustedUV, 5, false);
+      hsv = Common.convertRGBtoHSV(uvColor);
+
+      UVpos = float2(cos(hsv[0]), sin(hsv[0])) * pow(1-hsv[1], SatInfl);
+    }
+    return color;
+}
+return 0;

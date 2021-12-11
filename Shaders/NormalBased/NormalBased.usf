@@ -1,0 +1,99 @@
+if (version <= 1) {
+    MaterialFloat2 currentUV = GetViewportUV(Parameters);
+    float2 adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(currentUV, 14), 14);
+
+    float3 normalCol = SceneTextureLookup(adjustedUV, 8, false);
+    float3 col = Col;
+
+    MaterialFloat3 camDir = mul(MaterialFloat3(0,0,1), (MaterialFloat3x3)(ResolvedView.ViewToTranslatedWorld));
+    float3 normalVal = cross(camDir, normalCol);
+
+    float dist = maxDist/6.5;
+    float2 newUV = float2(normalVal.r*dist, normalVal.b*dist);
+
+    newUV += (Size * adjustedUV);
+    newUV /= Size;
+
+    newUV = abs(newUV);
+    if (newUV[0] > 1) {
+      newUV[0] = 1 - (newUV[0] - floor(newUV[0]));
+    }
+    if (newUV[1] > 1) {
+      newUV[1] = 1 - (newUV[1] - floor(newUV[1]));
+    }
+
+    return SceneTextureLookup(newUV, 14, false);
+} else if (version <= 2) {
+    MaterialFloat2 origUV = GetViewportUV(Parameters);
+    float3 normalCol = SceneTextureLookup(GetViewportUV(Parameters), 8, false);
+
+    MaterialFloat3 camDir = mul(MaterialFloat3(0,0,1), (MaterialFloat3x3)(ResolvedView.ViewToTranslatedWorld));
+
+    float dist = maxDist/6.5;
+    float3 col = Col;
+
+    for(int i = 0; i < loops; i++) {
+
+	    float3 normalVal = cross(camDir, normalCol);
+
+	    normalVal = MaterialExpressionVectorNoise(normalVal,1.00000000,0.00000000,0.00000000,300.00000000).xyz;
+
+	    float2 newUV = float2(normalVal.r*dist, normalVal.b*dist);
+
+	    newUV += (Size * origUV);
+	    newUV /= Size;
+
+	    newUV = abs(newUV);
+	    if (newUV[0] > 1) {
+	      newUV[0] = 1 - (newUV[0] - floor(newUV[0]));
+	    }
+	    if (newUV[1] > 1) {
+	      newUV[1] = 1 - (newUV[1] - floor(newUV[1]));
+	    }
+	    newUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(newUV, 14), 14);
+
+        normalCol = SceneTextureLookup(newUV, 8, false);
+	    col = SceneTextureLookup(newUV, 14, false);
+    }
+
+    return col;
+} else {
+    maxDist /= 15;
+    float2 uv = GetViewportUV(Parameters);
+
+    //Get the starting Normal color and starting regular color
+    float3 worldNormal = SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(uv, 14), 14), 8, false);
+    float3 result =  SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(uv, 14), 14), 14, false);
+
+    //Camera Direction Input
+    float3 CamDir = CameraDirection;
+
+    float2 ScreenPos = uv * Size; //Get the screen position of the original Pixel
+
+    //First Normal Calculation
+    float3 adjustedNormal = cross(CamDir, worldNormal);
+
+    for (int i = 0; i < loops; i++) {
+        float2 newUV = float2(adjustedNormal[0], adjustedNormal[1]) * 2 - 1; //Get the RG channels
+
+        newUV *= maxDist; //Multiply the direction by maxDistance
+        newUV += ScreenPos; //Add original location to new direction
+        newUV /= Size; //Scale by screen size
+
+        //Adjust for edges
+        newUV = abs(newUV);
+        if (newUV[0] > 1) {
+            newUV[0] = 1 - (newUV[0] - floor(newUV[0]));
+        }
+        if (newUV[1] > 1) {
+            newUV[1] = 1 - (newUV[1] - floor(newUV[1]));
+        }
+        newUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(newUV, 14), 14);
+
+        //New Result & Normals
+        result = SceneTextureLookup(newUV, 14, false);
+        worldNormal = SceneTextureLookup(ClampSceneTextureUV(ViewportUVToSceneTextureUV(newUV, 14), 14), 8, false);
+        adjustedNormal = cross(CamDir, worldNormal);
+    }
+    return result;
+}

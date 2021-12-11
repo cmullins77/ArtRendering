@@ -1,0 +1,46 @@
+//Get the original color value, used only if loops = 0
+float3 color = SceneTextureLookup(GetDefaultSceneTextureUV(Parameters, 14), 14, false);
+
+//Which Color Channel is used for UV Values: With Lighting - 14, Base Color - 5
+int colorChannel = 5;
+
+//Get the Current UV values, does not change in loop
+MaterialFloat2 currentUV = GetViewportUV(Parameters);
+
+//Get Original UV Color using the designated color channel
+float3 uvColor = SceneTextureLookup(GetDefaultSceneTextureUV(Parameters, 14), colorChannel, false);
+
+//Get the original r & g values from the uv color
+float2 UVpos = float2(uvColor[0], uvColor[1]);
+
+//Adjust calculation is 1/screensize * max distance * (2(uv - 0.5))
+float2 Adjust = View.ViewSizeAndInvSize.zw * MaxDistanceAway * 2 * (UVpos - 0.5);
+
+//Loop MaxLoops times
+for (int i = 0; i < MaxLoops; i++) {
+  //Calculate new uv position
+  MaterialFloat2 uvChange = UVpos * Adjust;
+  MaterialFloat2 newUV = uvChange + currentUV;
+
+  //Adjust uv so that it stays on the screen for edge cases
+  MaterialFloat2 adjustedUV = newUV;
+  adjustedUV = abs(adjustedUV);
+  if (adjustedUV[0] > 1) {
+    adjustedUV[0] = 1 - (adjustedUV[0] - floor(adjustedUV[0]));
+  }
+  if (adjustedUV[1] > 1) {
+    adjustedUV[1] = 1 - (adjustedUV[1] - floor(adjustedUV[1]));
+  }
+
+  adjustedUV = ClampSceneTextureUV(ViewportUVToSceneTextureUV(adjustedUV, 14), 14);
+
+  //Get color value at new uv position and the new uv color/uv position for the next calculation
+  color = SceneTextureLookup(adjustedUV, 14, false);
+  uvColor = SceneTextureLookup(adjustedUV, colorChannel, false);
+
+  UVpos = float2(uvColor[0], uvColor[1]);
+}
+return color;
+
+//#include "/Project/WaterColor/WaterColor.usf"
+//return 0;
